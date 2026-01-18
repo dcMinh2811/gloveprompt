@@ -98,11 +98,11 @@
   </div>
 
   <script>
-    // ==================== CONFIG & TRANSLATIONS ====================
+    // ==================== HARD-CODED CONFIG (TOKENS ARE PUBLIC NOW) ====================
     const config = {
       shopName: 'GlovePrompt AI Shop',
       logoUrl: '',
-      templateUrls: { // Per-size templates
+      templateUrls: { // Per-size templates (add public PNG URLs via admin if needed)
         default: 'https://cdn.shopify.com/s/files/1/0069/2394/9768/products/Goalkeeper-Gloves-Backhand-View.png?v=1678901234',
         '7': '',
         '8': '',
@@ -110,12 +110,16 @@
         '10': '',
         '11': ''
       },
-      hfToken: 'hf_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-      web3AccessKey: 'your_access_key_here'
+      hfToken: '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',
+      web3AccessKey: '1d97caac-98ed-4c6a-9de4-6cd2c513cfa8'
     };
 
+    // Allow admin to override shop name, logo, templates (but tokens stay hard-coded)
     if (localStorage.getItem('gloveConfig')) {
-      Object.assign(config, JSON.parse(localStorage.getItem('gloveConfig')));
+      const saved = JSON.parse(localStorage.getItem('gloveConfig'));
+      config.shopName = saved.shopName || config.shopName;
+      config.logoUrl = saved.logoUrl || config.logoUrl;
+      config.templateUrls = { ...config.templateUrls, ...saved.templateUrls };
     }
 
     const translations = {
@@ -226,11 +230,7 @@
 
     // ==================== AI GENERATION ====================
     async function generateImage(prompt) {
-      if (!config.hfToken || config.hfToken.includes('XXX')) {
-        alert('Set Hugging Face token in admin panel');
-        return;
-      }
-
+      // Tokens are hard-coded — no check needed
       document.getElementById('loading').classList.remove('hidden');
       document.getElementById('previewSection').classList.add('hidden');
 
@@ -243,7 +243,10 @@
           body: JSON.stringify({ inputs: enhancedPrompt }),
         });
 
-        if (!response.ok) throw new Error('Generation failed');
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(errText || 'Generation failed');
+        }
 
         generatedBlob = await response.blob();
         currentPrompt = prompt;
@@ -251,7 +254,7 @@
         const imageUrl = URL.createObjectURL(generatedBlob);
         renderPreviews(imageUrl);
       } catch (err) {
-        alert('Generation error: ' + err.message + ' (must be online — deploy to GitHub Pages)');
+        alert('Generation error: ' + err.message);
         document.getElementById('loading').classList.add('hidden');
       }
     }
@@ -279,7 +282,7 @@
       ctxL.drawImage(templateImg, 0, 0, leftCanvas.width, leftCanvas.height);
       ctxR.drawImage(templateImg, 0, 0, rightCanvas.width, rightCanvas.height);
 
-      const scale = 0.6; // Adjust if needed (0.5 = smaller, 0.7 = larger)
+      const scale = 0.6;
       const dw = leftCanvas.width * scale;
       const dh = leftCanvas.height * scale;
       const dx = (leftCanvas.width - dw) / 2;
@@ -357,12 +360,12 @@
         fetch('https://api.web3forms.com/submit', {
           method: 'POST',
           body: formData
-        }).then(res => {
-          if (res.ok) {
+        }).then(res => res.json()).then(data => {
+          if (data.success) {
             closeModal();
             document.getElementById('successMessage').classList.remove('hidden');
           } else {
-            alert('Submission failed');
+            alert('Submission failed: ' + data.message);
           }
         }).catch(() => alert('Submission error'));
       }, 'image/png');
@@ -376,7 +379,7 @@
       generatedBlob = null;
     }
 
-    // ==================== ADMIN PANEL ====================
+    // ==================== ADMIN PANEL (for shop name, logo, templates only) ====================
     if (location.hash === '#admin') {
       document.body.innerHTML = `<div class="max-w-2xl mx-auto p-8 text-white">
         <h1 class="text-4xl mb-8">Admin Settings</h1>
@@ -389,7 +392,7 @@
           const currentTemplates = config.templateUrls;
           document.body.innerHTML = `
             <div class="max-w-2xl mx-auto p-8 text-white bg-gray-800 rounded-2xl overflow-y-auto max-h-screen">
-              <h1 class="text-4xl mb-8">Admin Configuration</h1>
+              <h1 class="text-4xl mb-8">Admin Configuration (Tokens are hard-coded)</h1>
               <label>Shop Name</label><input id="shopNameIn" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${config.shopName}">
               <label>Logo URL</label><input id="logoUrlIn" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${config.logoUrl}">
               <label>Default Template URL</label><input id="defaultTemplateIn" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${currentTemplates.default}">
@@ -398,8 +401,6 @@
               <label>Size 9 Template URL</label><input id="size9In" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${currentTemplates['9'] || ''}">
               <label>Size 10 Template URL</label><input id="size10In" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${currentTemplates['10'] || ''}">
               <label>Size 11 Template URL</label><input id="size11In" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${currentTemplates['11'] || ''}">
-              <label>Hugging Face Token</label><input id="hfIn" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${config.hfToken}">
-              <label>Web3Forms Access Key</label><input id="web3In" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${config.web3AccessKey}">
               <button onclick="saveConfig()" class="mt-8 px-8 py-4 bg-green-600 rounded">Save & Return</button>
             </div>`;
           
@@ -414,9 +415,7 @@
                 '9': document.getElementById('size9In').value,
                 '10': document.getElementById('size10In').value,
                 '11': document.getElementById('size11In').value
-              },
-              hfToken: document.getElementById('hfIn').value,
-              web3AccessKey: document.getElementById('web3In').value
+              }
             };
             localStorage.setItem('gloveConfig', JSON.stringify(newConfig));
             location.hash = '';
