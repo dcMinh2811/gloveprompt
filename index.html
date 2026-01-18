@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GlovePrompt AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #111827; color: #f3f4f6; }
+    .spinner { border: 4px solid rgba(0,255,0,0.3); border-top: 4px solid #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="h-full flex items-center justify-center">
+
+  <!-- Language Selection Screen -->
+  <div id="languageScreen" class="text-center">
+    <h1 class="text-5xl font-bold mb-8 text-green-500">🧤 GlovePrompt AI</h1>
+    <p class="text-2xl mb-12 text-gray-300" id="subtitle">Create your custom goalkeeper gloves with AI</p>
+    <div class="space-x-8 md:space-x-16">
+      <button onclick="setLanguage('en')" class="px-12 py-8 text-3xl font-semibold bg-green-600 hover:bg-green-700 rounded-xl shadow-lg">English</button>
+      <button onclick="setLanguage('vi')" class="px-12 py-8 text-3xl font-semibold bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg">Tiếng Việt</button>
+    </div>
+  </div>
+
+  <!-- Main App Screen -->
+  <div id="mainApp" class="hidden max-w-4xl mx-auto p-8">
+    <header class="text-center mb-8 relative">
+      <button id="changeLangBtn" class="absolute left-0 top-0 px-4 py-2 bg-gray-700 rounded-lg text-sm">Change Language</button>
+      <img id="shopLogo" src="" alt="Shop Logo" class="h-16 mx-auto mb-4 hidden">
+      <h1 class="text-4xl font-bold text-green-500">GlovePrompt AI</h1>
+      <p id="shopName" class="text-xl text-gray-400 mt-2">Custom Goalkeeper Gloves</p>
+    </header>
+
+    <div class="bg-gray-800 rounded-2xl p-8 shadow-2xl">
+      <!-- Size Selection -->
+      <div class="mb-8">
+        <label class="text-xl block mb-4" id="sizeLabel">Select Glove Size (required for production)</label>
+        <select id="sizeSelect" class="w-full p-4 text-lg bg-gray-900 rounded-lg">
+          <option value="">Choose size...</option>
+          <option value="7">Size 7</option>
+          <option value="8">Size 8</option>
+          <option value="9">Size 9</option>
+          <option value="10">Size 10</option>
+          <option value="11">Size 11</option>
+        </select>
+      </div>
+
+      <textarea id="promptInput" class="w-full p-4 text-lg bg-gray-900 rounded-lg mb-6" rows="4" placeholder="Describe your design..."></textarea>
+      <button id="generateBtn" class="w-full py-4 text-2xl font-bold bg-green-600 hover:bg-green-700 rounded-lg mb-8">Generate</button>
+
+      <div id="previewSection" class="hidden">
+        <p class="text-center text-lg mb-4 text-gray-400">Preview is approximate — shop will fit design exactly to your size template</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          <div class="text-center">
+            <p class="text-xl mb-4" id="leftLabel">Left Glove</p>
+            <canvas id="leftCanvas" width="600" height="600" class="border-4 border-gray-600 rounded-xl shadow-lg max-w-full"></canvas>
+          </div>
+          <div class="text-center">
+            <p class="text-xl mb-4" id="rightLabel">Right Glove</p>
+            <canvas id="rightCanvas" width="600" height="600" class="border-4 border-gray-600 rounded-xl shadow-lg max-w-full"></canvas>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap justify-center gap-4 mb-8">
+          <button id="variationsBtn" class="px-8 py-4 text-xl bg-blue-600 hover:bg-blue-700 rounded-lg">Generate Variations</button>
+          <button id="newPromptBtn" class="px-8 py-4 text-xl bg-gray-600 hover:bg-gray-700 rounded-lg">New Prompt</button>
+        </div>
+
+        <button id="approvalBtn" class="w-full py-4 text-2xl font-bold bg-green-600 hover:bg-green-700 rounded-lg">Send for Approval</button>
+      </div>
+
+      <div id="loading" class="hidden text-center my-12">
+        <div class="spinner mx-auto mb-4"></div>
+        <p class="text-2xl" id="loadingText">Generating your design...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Approval Modal -->
+  <div id="approvalModal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+    <div class="bg-gray-800 p-8 rounded-2xl max-w-md w-full">
+      <h2 class="text-3xl font-bold mb-6 text-center" id="modalTitle">Send for Approval</h2>
+      <p class="text-lg mb-4 text-center">Selected Size: <span id="modalSize" class="font-bold text-green-400"></span></p>
+      <input type="text" id="customerName" placeholder="Name" class="w-full p-4 mb-4 bg-gray-900 rounded-lg" required>
+      <input type="tel" id="customerPhone" placeholder="Phone Number" class="w-full p-4 mb-8 bg-gray-900 rounded-lg" required>
+      <button id="submitApproval" class="w-full py-4 text-2xl font-bold bg-green-600 hover:bg-green-700 rounded-lg">Submit</button>
+      <button onclick="closeModal()" class="mt-4 text-gray-400 w-full">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Success Message -->
+  <div id="successMessage" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+    <div class="bg-gray-800 p-12 rounded-2xl text-center">
+      <p class="text-3xl font-bold text-green-500" id="successText">Submission sent! The shop will contact you soon.</p>
+      <button onclick="resetApp()" class="mt-8 px-8 py-4 text-xl bg-green-600 rounded-lg">Create New Design</button>
+    </div>
+  </div>
+
+  <script>
+    // ==================== CONFIG & TRANSLATIONS ====================
+    const config = {
+      shopName: 'GlovePrompt AI Shop',
+      logoUrl: '',
+      templateUrls: { // NEW: Per-size templates (add your public PNG URLs here via admin)
+        default: 'https://cdn.shopify.com/s/files/1/0069/2394/9768/products/Goalkeeper-Gloves-Backhand-View.png?v=1678901234',
+        '7': '',
+        '8': '',
+        '9': '',
+        '10': '',
+        '11': ''
+      },
+      hfToken: 'hf_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+      web3AccessKey: 'your_access_key_here'
+    };
+
+    if (localStorage.getItem('gloveConfig')) {
+      Object.assign(config, JSON.parse(localStorage.getItem('gloveConfig')));
+    }
+
+    const translations = {
+      en: {
+        subtitle: 'Create your custom goalkeeper gloves with AI',
+        sizeLabel: 'Select Glove Size (required for production)',
+        promptPlaceholder: 'Describe your design, e.g., fiery phoenix with Manchester City logo and player name',
+        generate: 'Generate',
+        variations: 'Generate Variations',
+        newPrompt: 'New Prompt',
+        approval: 'Send for Approval',
+        leftLabel: 'Left Glove',
+        rightLabel: 'Right Glove',
+        modalTitle: 'Send for Approval',
+        namePlaceholder: 'Name',
+        phonePlaceholder: 'Phone Number',
+        submit: 'Submit',
+        loading: 'Generating your design...',
+        success: 'Submission sent! The shop will contact you soon.',
+        changeLang: 'Change Language'
+      },
+      vi: {
+        subtitle: 'Tạo găng tay thủ môn tùy chỉnh của bạn bằng AI',
+        sizeLabel: 'Chọn size găng (bắt buộc để sản xuất chính xác)',
+        promptPlaceholder: 'Mô tả thiết kế của bạn, ví dụ: phượng hoàng lửa với logo Manchester City và tên cầu thủ',
+        generate: 'Tạo',
+        variations: 'Tạo biến thể',
+        newPrompt: 'Ý tưởng mới',
+        approval: 'Gửi duyệt',
+        leftLabel: 'Găng tay trái',
+        rightLabel: 'Găng tay phải',
+        modalTitle: 'Gửi duyệt',
+        namePlaceholder: 'Họ tên',
+        phonePlaceholder: 'Số điện thoại',
+        submit: 'Gửi',
+        loading: 'Đang tạo thiết kế của bạn...',
+        success: 'Đã gửi thành công! Cửa hàng sẽ liên hệ bạn sớm.',
+        changeLang: 'Đổi ngôn ngữ'
+      }
+    };
+
+    let currentLang = 'en';
+    let currentPrompt = '';
+    let generatedBlob = null;
+    let selectedSize = '';
+
+    const textKeywords = ['text', 'name', 'letter', 'logo', 'word', 'slogan', 'player', 'team', 'number', 'chữ', 'tên', 'chữ cái', 'từ', 'khẩu hiệu', 'cầu thủ', 'đội', 'số'];
+
+    function hasText(prompt) {
+      const lower = prompt.toLowerCase();
+      return textKeywords.some(kw => lower.includes(kw));
+    }
+
+    // ==================== LANGUAGE SETUP ====================
+    function setLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem('gloveLang', lang);
+      document.getElementById('languageScreen').classList.add('hidden');
+      document.getElementById('mainApp').classList.remove('hidden');
+      updateTexts();
+      applyConfig();
+    }
+
+    function showLanguageScreen() {
+      document.getElementById('mainApp').classList.add('hidden');
+      document.getElementById('languageScreen').classList.remove('hidden');
+    }
+
+    function updateTexts() {
+      const t = translations[currentLang];
+      document.getElementById('subtitle').textContent = t.subtitle;
+      document.getElementById('sizeLabel').textContent = t.sizeLabel;
+      document.getElementById('promptInput').placeholder = t.promptPlaceholder;
+      document.getElementById('generateBtn').textContent = t.generate;
+      document.getElementById('variationsBtn').textContent = t.variations;
+      document.getElementById('newPromptBtn').textContent = t.newPrompt;
+      document.getElementById('approvalBtn').textContent = t.approval;
+      document.getElementById('leftLabel').textContent = t.leftLabel;
+      document.getElementById('rightLabel').textContent = t.rightLabel;
+      document.getElementById('modalTitle').textContent = t.modalTitle;
+      document.getElementById('customerName').placeholder = t.namePlaceholder;
+      document.getElementById('customerPhone').placeholder = t.phonePlaceholder;
+      document.getElementById('submitApproval').textContent = t.submit;
+      document.getElementById('loadingText').textContent = t.loading;
+      document.getElementById('successText').textContent = t.success;
+      document.getElementById('changeLangBtn').textContent = t.changeLang;
+    }
+
+    function applyConfig() {
+      document.getElementById('shopName').textContent = config.shopName;
+      if (config.logoUrl) {
+        const logo = document.getElementById('shopLogo');
+        logo.src = config.logoUrl;
+        logo.classList.remove('hidden');
+      }
+    }
+
+    if (localStorage.getItem('gloveLang')) {
+      setLanguage(localStorage.getItem('gloveLang'));
+    }
+
+    document.getElementById('changeLangBtn').addEventListener('click', showLanguageScreen);
+
+    // ==================== TEMPLATE SELECTION ====================
+    function getTemplateUrl() {
+      return config.templateUrls[selectedSize] || config.templateUrls.default;
+    }
+
+    // ==================== AI GENERATION ====================
+    async function generateImage(prompt) {
+      if (!config.hfToken || config.hfToken.includes('XXX')) {
+        alert('Set Hugging Face token in admin panel');
+        return;
+      }
+
+      document.getElementById('loading').classList.remove('hidden');
+      document.getElementById('previewSection').classList.add('hidden');
+
+      const enhancedPrompt = `Highly detailed, vibrant graphic for goalkeeper glove backhand: ${prompt}, seamless pattern suitable for printing, transparent background, square aspect ratio, ultra sharp, no glove silhouette`;
+
+      try {
+        const response = await fetch("https://api.inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell", {
+          headers: { Authorization: `Bearer ${config.hfToken}` },
+          method: "POST",
+          body: JSON.stringify({ inputs: enhancedPrompt }),
+        });
+
+        if (!response.ok) throw new Error('Generation failed');
+
+        generatedBlob = await response.blob();
+        currentPrompt = prompt;
+
+        const imageUrl = URL.createObjectURL(generatedBlob);
+        renderPreviews(imageUrl);
+      } catch (err) {
+        alert('Generation error: ' + err.message + ' (try deploying online if testing locally)');
+        document.getElementById('loading').classList.add('hidden');
+      }
+    }
+
+    // ==================== PREVIEW RENDERING ====================
+    async function renderPreviews(imageUrl) {
+      const templateImg = new Image();
+      templateImg.crossOrigin = 'anonymous';
+      templateImg.src = getTemplateUrl();
+
+      const designImg = new Image();
+      designImg.crossOrigin = 'anonymous';
+      designImg.src = imageUrl;
+
+      await Promise.all([templateImg.onload, designImg.onload]);
+
+      const leftCanvas = document.getElementById('leftCanvas');
+      const rightCanvas = document.getElementById('rightCanvas');
+      const ctxL = leftCanvas.getContext('2d');
+      const ctxR = rightCanvas.getContext('2d');
+
+      ctxL.clearRect(0, 0, leftCanvas.width, leftCanvas.height);
+      ctxR.clearRect(0, 0, rightCanvas.width, rightCanvas.height);
+
+      ctxL.drawImage(templateImg, 0, 0, leftCanvas.width, leftCanvas.height);
+      ctxR.drawImage(templateImg, 0, 0, rightCanvas.width, rightCanvas.height);
+
+      const scale = 0.6;
+      const dw = leftCanvas.width * scale;
+      const dh = leftCanvas.height * scale;
+      const dx = (leftCanvas.width - dw) / 2;
+      const dy = (leftCanvas.height - dh) / 2;
+
+      ctxL.drawImage(designImg, dx, dy, dw, dh);
+
+      if (hasText(currentPrompt)) {
+        ctxR.drawImage(designImg, dx, dy, dw, dh);
+      } else {
+        ctxR.save();
+        ctxR.scale(-1, 1);
+        ctxR.drawImage(designImg, -leftCanvas.width + dx, dy, -dw, dh);
+        ctxR.restore();
+      }
+
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('previewSection').classList.remove('hidden');
+    }
+
+    // ==================== EVENTS ====================
+    document.getElementById('generateBtn').addEventListener('click', () => {
+      selectedSize = document.getElementById('sizeSelect').value;
+      if (!selectedSize) {
+        alert('Please select glove size first');
+        return;
+      }
+      const prompt = document.getElementById('promptInput').value.trim();
+      if (prompt) generateImage(prompt);
+    });
+
+    document.getElementById('variationsBtn').addEventListener('click', () => generateImage(currentPrompt));
+
+    document.getElementById('newPromptBtn').addEventListener('click', () => {
+      document.getElementById('promptInput').value = '';
+      document.getElementById('previewSection').classList.add('hidden');
+    });
+
+    document.getElementById('approvalBtn').addEventListener('click', () => {
+      document.getElementById('modalSize').textContent = selectedSize;
+      document.getElementById('approvalModal').classList.remove('hidden');
+    });
+
+    function closeModal() {
+      document.getElementById('approvalModal').classList.add('hidden');
+    }
+
+    // ==================== SUBMISSION ====================
+    document.getElementById('submitApproval').addEventListener('click', async () => {
+      const name = document.getElementById('customerName').value.trim();
+      const phone = document.getElementById('customerPhone').value.trim();
+      if (!name || !phone || !selectedSize || !generatedBlob) {
+        alert('Fill all fields and generate design first');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('access_key', config.web3AccessKey);
+      formData.append('name', name);
+      formData.append('phone', phone);
+      formData.append('size', selectedSize);
+      formData.append('prompt', currentPrompt);
+      formData.append('raw_image', generatedBlob, 'design_raw.png');
+
+      const combinedCanvas = document.createElement('canvas');
+      combinedCanvas.width = 1200;
+      combinedCanvas.height = 600;
+      const ctxC = combinedCanvas.getContext('2d');
+      ctxC.drawImage(document.getElementById('leftCanvas'), 0, 0, 600, 600);
+      ctxC.drawImage(document.getElementById('rightCanvas'), 600, 0, 600, 600);
+
+      combinedCanvas.toBlob(blob => {
+        formData.append('preview_image', blob, 'preview_pair.png');
+
+        fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          body: formData
+        }).then(res => {
+          if (res.ok) {
+            closeModal();
+            document.getElementById('successMessage').classList.remove('hidden');
+          } else {
+            alert('Submission failed');
+          }
+        }).catch(() => alert('Submission error'));
+      }, 'image/png');
+    });
+
+    function resetApp() {
+      document.getElementById('successMessage').classList.add('hidden');
+      document.getElementById('promptInput').value = '';
+      document.getElementById('sizeSelect').value = '';
+      document.getElementById('previewSection').classList.add('hidden');
+      generatedBlob = null;
+    }
+
+    // ==================== ADMIN PANEL ====================
+    if (location.hash === '#admin') {
+      document.body.innerHTML = `<div class="max-w-2xl mx-auto p-8 text-white">
+        <h1 class="text-4xl mb-8">Admin Settings</h1>
+        <input id="adminPass" type="password" placeholder="Password (default: admin123)" class="w-full p-4 mb-4 bg-gray-900 rounded">
+        <button onclick="checkAdmin()" class="px-8 py-4 bg-green-600 rounded">Enter</button>
+      </div>`;
+
+      window.checkAdmin = () => {
+        if (document.getElementById('adminPass').value === 'admin123') {
+          const currentTemplates = config.templateUrls;
+          document.body.innerHTML = `
+            <div class="max-w-2xl mx-auto p-8 text-white bg-gray-800 rounded-2xl overflow-y-auto max-h-screen">
+              <h1 class="text-4xl mb-8">Admin Configuration</h1>
+              <label>Shop Name</label><input id="shopNameIn" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${config.shopName}">
+              <label>Logo URL</label><input id="logoUrlIn" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${config.logoUrl}">
+              <label>Default Template URL</label><input id="defaultTemplateIn" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${currentTemplates.default}">
+              <label>Size 7 Template URL</label><input id="size7In" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${currentTemplates['7'] || ''}">
+              <label>Size 8 Template URL</label><input id="size8In" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${currentTemplates['8'] || ''}">
+              <label>Size 9 Template URL</label><input id="size9In" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${currentTemplates['9'] || ''}">
+              <label>Size 10 Template URL</label><input id="size10In" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${currentTemplates['10'] || ''}">
+              <label>Size 11 Template URL</label><input id="size11In" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${currentTemplates['11'] || ''}">
+              <label>Hugging Face Token</label><input id="hfIn" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${config.hfToken}">
+              <label>Web3Forms Access Key</label><input id="web3In" class="w-full p-4 mb-4 bg-gray-900 rounded" value="${config.web3AccessKey}">
+              <button onclick="saveConfig()" class="mt-8 px-8 py-4 bg-green-600 rounded">Save & Return</button>
+            </div>`;
+          
+          window.saveConfig = () => {
+            const newConfig = {
+              shopName: document.getElementById('shopNameIn').value,
+              logoUrl: document.getElementById('logoUrlIn').value,
+              templateUrls: {
+                default: document.getElementById('defaultTemplateIn').value,
+                '7': document.getElementById('size7In').value,
+                '8': document.getElementById('size8In').value,
+                '9': document.getElementById('size9In').value,
+                '10': document.getElementById('size10In').value,
+                '11': document.getElementById('size11In').value
+              },
+              hfToken: document.getElementById('hfIn').value,
+              web3AccessKey: document.getElementById('web3In').value
+            };
+            localStorage.setItem('gloveConfig', JSON.stringify(newConfig));
+            location.hash = '';
+            location.reload();
+          };
+        } else {
+          alert('Wrong password');
+        }
+      };
+    }
+  </script>
+</body>
+</html>
